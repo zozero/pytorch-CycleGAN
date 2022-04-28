@@ -1,9 +1,9 @@
-from 参数仓.基础参数类 import 基础参数
+from 选项仓.基础选项类 import 基础选项
 
 
-class 训练用参数(基础参数):
+class 训练用选项(基础选项):
     def 进行初始化(self, 解析器):
-        解析器=基础参数.进行初始化(self, 解析器)
+        解析器=基础选项.进行初始化(self, 解析器)
         # 可视化控制类和超文本标记语言显示时的解析器
         解析器.add_argument('--显示的频率', type=int, default=400, help='在屏幕上显示训练结果的频率')
         解析器.add_argument('--显示的行数', type=int, default=4, help='如果是正数，则在可视化控制类（visdom：Visual dominate）的单个网页面板中显示所有图像，每行有一定数量的图像。')
@@ -20,8 +20,8 @@ class 训练用参数(基础参数):
         解析器.add_argument('--是否通过迭代来保存', action='store_true', help='是否通过迭代来保存模型')
         解析器.add_argument('--是否继续训练', action='store_true', help='继续训练会加载最新模型')
         解析器.add_argument('--起始迭代位置',  type=int, default=1,help='起始迭代位置，通过我们保存的模型（起始迭代位置，起始迭代位置+保存频率，......）')
-        解析器.add_argument('--阶段',  type=str, default='训练',help='训练，验证，测试，等等')
-        # 训练时参数
+        解析器.add_argument('--阶段',  type=str, default='train',help='训练，验证，测试，等等')
+        # 训练时选项
         解析器.add_argument('--迭代次数',  type=int, default=100,help='具有初始学习率的迭代数')
         解析器.add_argument('--迭代衰减次数',  type=int, default=100,help='将学习率线性衰减为零的迭代次数')
         解析器.add_argument('--动量项1',  type=float, default=0.5,help='片刻自适应估计算法的动量项')
