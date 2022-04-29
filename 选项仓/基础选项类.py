@@ -20,7 +20,7 @@ class 基础选项:
         解析器.add_argument('--检查点目录', type=str, default='./检查点仓', help='网络模型保存在这里')
         # 模型选项
         解析器.add_argument('--模型', type=str, default='循环生成式对抗神经网络',
-                         help='选择使用哪一个神经网络模型。[循环生成式对抗神经网络|pix2pix | test | colorization]')  # 这里只会改编循环生成性对抗神经网络
+                         help='选择使用哪一个神经网络模型。[循环生成式对抗神经网络|pix2pix | test | colorization]')  # 这里只会改写《循环生成性对抗神经网络》
         解析器.add_argument('--输入的通道数', type=int, default=3, help='输入图像的通道数：3表示rgb，1表示灰度图')
         解析器.add_argument('--输出的通道数', type=int, default=3, help='输出图像的通道数：3表示rgb，1表示灰度图')
         解析器.add_argument('--生成性对抗神经网络过滤器长度', type=int, default='64', help='在最后卷积层的生成性对抗神经网络过滤器')  # 有待进一步确认意义
@@ -49,9 +49,9 @@ class 基础选项:
         解析器.add_argument('--不翻转', action='store_true', help='如果指定，那么不要为图像数据增强做翻转')
         解析器.add_argument('--显示时窗口的大小', type=int, default=256, help='可视化控制类和网页的显示窗口大小')
         # 额外选项
-        解析器.add_argument('--当前迭代数', type=str, default='latest', help='加载到哪个迭代数？设置为最新以使用最新的缓存模型')
-        解析器.add_argument('--载入迭代', type=int, default=0,
-                         help='加载哪次迭代的权重网络模型？如果 载入迭代 > 0，代码将通过 iter_[load_iter] 加载模型；否则，代码将按 [当前迭代数]加载模型')
+        解析器.add_argument('--轮回的位子', type=str, default='最新', help='加载到哪个轮回数？设置为最新以使用最新的缓存模型')
+        解析器.add_argument('--迭代的位子', type=int, default=0,
+                         help='加载哪次迭代的权重网络模型？如果 载入迭代 > 0，代码将通过 迭代_[迭代的位子] 加载模型；否则，代码将按 [轮回]加载模型')
         解析器.add_argument('--冗余信息', action='store_true', help='如果指定，打印更多调试信息')
         解析器.add_argument('--后缀', type=str, default='', help='定制后缀：解析器.名称=解析器.名称+后缀 之类的{模型}_{生成器的模型结构}_尺寸{载入后尺寸}')
 
