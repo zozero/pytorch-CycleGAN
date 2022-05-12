@@ -25,14 +25,13 @@ class 基础选项:
                          help='选择使用哪一个神经网络模型。[循环生成式对抗神经网络|pix2pix | test | colorization]')  # 这里只会改写《循环生成性对抗神经网络》
         解析器.add_argument('--输入的通道数', type=int, default=3, help='输入图像的通道数：3表示rgb，1表示灰度图')
         解析器.add_argument('--输出的通道数', type=int, default=3, help='输出图像的通道数：3表示rgb，1表示灰度图')
-        # 主要用来确定图像通道数量 一开始图像可能是3或者1，之后会是64*n，最后会是64。
-        解析器.add_argument('--生成器末尾过滤器数量', type=int, default=64, help='在最后卷积层的生成性对抗神经网络过滤器')
-        解析器.add_argument('--判别器开头过滤器数量', type=int, default=64, help='在开头卷积层的判别器过滤器')
+        解析器.add_argument('--生成器末尾过滤器数量', type=int, default=64, help='生成器网络在最后一个卷积层的过滤器数量')
+        解析器.add_argument('--判别器开头过滤器数量', type=int, default=64, help='判别器网络在首个卷积层的过滤器数量')
         解析器.add_argument('--判别器模型类型', type=str, default='基础',
                          help='指定判别器模型结构类型 [基础 | n_layers | pixel]。这里基础模型结构类型是一个70×70补丁版生成性对抗神经网络')
         解析器.add_argument('--生成器模型类型', type=str, default='9块版残差神经网络',
                          help='指定生成器模型结构类型 [9块版残差神经网络 | 6块版残差神经网络  | U型网络_256 | U型网络_128]')
-        解析器.add_argument('--n_layers_D', type=int, default=3, help='只有在判别器的模型结构等于n_layers值时使用')
+        解析器.add_argument('--判别器卷积层数量', type=int, default=3, help='只有在判别器的模型结构等于n_layers值时使用')
         解析器.add_argument('--归一化类型', type=str, default='实例', help='实例归一化或者批归一化 [实例 | 批 | none]')
         解析器.add_argument('--网络初始化类型', type=str, default='常规', help='网络初始化类型[常规 | xavier | kaiming | orthogonal]')
         解析器.add_argument('--初始化比例因子', type=float, default=0.02, help='常规模式,xavier和orthogonal的比例因子')
