@@ -1,5 +1,6 @@
 import os.path
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 
 import torch
 
@@ -48,6 +49,7 @@ class 基础模型(ABC):
         if not self.是否为训练模式 or 选项.是否继续训练:
             加入后缀 = '迭代_%d' % 选项.迭代的位子 if 选项.迭代的位子 > 0 else 选项.轮回的位子
             self.载入神经网络(加入后缀)
+        self.打印神经网络(选项.冗余信息)
 
     def 载入神经网络(self, 轮回的位子):
         # 从磁盘加载所有网络
@@ -62,9 +64,30 @@ class 基础模型(ABC):
                 状态字典 = torch.load(生成的路径, map_location=self.设备)
                 if hasattr(状态字典, '_metadata'):
                     del 状态字典._metadata
-
                 for 键值 in list(状态字典.keys()):
                     self.__修补规范的实例以兼容状态字典(状态字典, 网络, 键值.split('.'))
+                网络.load_state_dict(状态字典)
 
-    def __修补规范的实例以兼容状态字典(self, 状态字典, 网络, 键值列表, 索引=0):
+    def 打印神经网络(self, 冗余信息):
+        print('---------- 已初始化神经网络 -------------')
+        for 模型名 in self.模型名称列表:
+            if isinstance(模型名, str):
+                网络 = getattr(self, 模型名 + '的网络')
+                参数数量 = 0
+                for 参数 in 网络.parameters():
+                    参数数量 += 参数.numel()
+                if 冗余信息:
+                    print(网络)
+                print('[神经网络 %s] 参数全部数量 : %.3f M' % (模型名, 参数数量 / 1e6))  # 有待运行后进一步查看
+        print('-----------------------------------------------')
+
+    def __修补规范的实例以兼容状态字典(self, 状态字典, 模型, 键值列表, 索引=0):
         键值 = 键值列表[索引]
+        if 索引 + 1 == len(键值列表):
+            if 模型.__class__.__name__.startswitch('InstanceNorm') and (键值 == 'running_mean' or 键值 == 'running_var'):
+                if getattr(模型, 键值) is None:
+                    状态字典.pop('.'.join(键值列表))
+            if 模型.__class__.__name__.startswitch('InstanceNorm') and (键值 == 'num_batches_tracked'):
+                状态字典.pop('.'.join(键值列表))
+        else:
+            self.__修补规范的实例以兼容状态字典(状态字典, getattr(模型, 键值), 键值列表, 索引 + 1)

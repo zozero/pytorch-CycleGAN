@@ -1,8 +1,10 @@
 import argparse
 import os.path
-
+import torch
+import torch.nn as nn
 import torch.cuda
 
+nn.Conv2d()
 import 模型仓
 from 工具仓 import 工具函数
 
@@ -23,16 +25,17 @@ class 基础选项:
                          help='选择使用哪一个神经网络模型。[循环生成式对抗神经网络|pix2pix | test | colorization]')  # 这里只会改写《循环生成性对抗神经网络》
         解析器.add_argument('--输入的通道数', type=int, default=3, help='输入图像的通道数：3表示rgb，1表示灰度图')
         解析器.add_argument('--输出的通道数', type=int, default=3, help='输出图像的通道数：3表示rgb，1表示灰度图')
-        解析器.add_argument('--生成性对抗神经网络过滤器长度', type=int, default='64', help='在最后卷积层的生成性对抗神经网络过滤器')  # 有待进一步确认意义
-        解析器.add_argument('--判别过滤器长度', type=int, default=64, help='在开头卷积层的判别过滤器')  # 有待进一步确认意义
-        解析器.add_argument('--判别器的模型结构', type=str, default='基础结构',
-                         help='指定判别器的模型结构 [基础结构 | n_layers | pixel]。这里基础模型结构是一个70×70补丁版生成性对抗神经网络')
-        解析器.add_argument('--生成器的模型结构', type=str, default='9块版残差神经网络',
-                         help='指定生成器的模型结构 [9块版残差神经网络 | 6块版残差神经网络  | unet_256 | unet_128]')
+        # 主要用来确定图像通道数量 一开始图像可能是3或者1，之后会是64*n，最后会是64。
+        解析器.add_argument('--生成器末尾过滤器数量', type=int, default=64, help='在最后卷积层的生成性对抗神经网络过滤器')
+        解析器.add_argument('--判别器开头过滤器数量', type=int, default=64, help='在开头卷积层的判别器过滤器')
+        解析器.add_argument('--判别器模型类型', type=str, default='基础',
+                         help='指定判别器模型结构类型 [基础 | n_layers | pixel]。这里基础模型结构类型是一个70×70补丁版生成性对抗神经网络')
+        解析器.add_argument('--生成器模型类型', type=str, default='9块版残差神经网络',
+                         help='指定生成器模型结构类型 [9块版残差神经网络 | 6块版残差神经网络  | U型网络_256 | U型网络_128]')
         解析器.add_argument('--n_layers_D', type=int, default=3, help='只有在判别器的模型结构等于n_layers值时使用')
-        解析器.add_argument('--归一化模式', type=str, default='实例', help='实例归一化或者批归一化 [实例 | 批 | none]')
-        解析器.add_argument('--网络初始化类型', type=str, default='常规类型', help='网络初始化类型[常规类型 | xavier | kaiming | orthogonal]')
-        解析器.add_argument('--网络初始化比例因子', type=float, default=0.02, help='常规模式,xavier和orthogonal的比例因子')  # 有待进一步确认意义
+        解析器.add_argument('--归一化类型', type=str, default='实例', help='实例归一化或者批归一化 [实例 | 批 | none]')
+        解析器.add_argument('--网络初始化类型', type=str, default='常规', help='网络初始化类型[常规 | xavier | kaiming | orthogonal]')
+        解析器.add_argument('--初始化比例因子', type=float, default=0.02, help='常规模式,xavier和orthogonal的比例因子')
         解析器.add_argument('--无失活率', action='store_true', help='生成器无失活率')
         # 数据集选项
         解析器.add_argument('--数据处理模式', type=str, default='凌乱', help='选择数据集载入方式。 [凌乱 | aligned | single | colorization]')
