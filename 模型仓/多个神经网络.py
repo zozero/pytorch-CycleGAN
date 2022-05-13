@@ -94,8 +94,20 @@ def 定义生成器(输入的通道数, 输出的通道数, 生成器过滤器�
     return 初始化网络(网络, 网络初始化类型, 初始化比例因子, 图形处理单元标识码)
 
 
-def 定义判别器(输入的通道数, 输出的通道数, 判别器过滤器数量,判别器网络名,判别器卷积层数量=3,归一化类型='批', 网络初始化类型='常规', 初始化比例因子=0.02, 图形处理单元标识码=[]):
-    pass
+def 定义判别器(输入的通道数, 判别器过滤器数量, 判别器网络名, 判别器卷积层数量=3, 归一化类型='批', 网络初始化类型='常规', 初始化比例因子=0.02, 图形处理单元标识码=[]):
+    网络 = None
+    层归一化 = 获得层归一化(归一化类型=归一化类型)
+
+    if 判别器网络名 == '基础':
+        网络 = 多层判别器(输入的通道数, 判别器过滤器数量, 层数=3, 层归一化=层归一化)
+    elif 判别器网络名 == '更多层数':
+        网络 = 多层判别器(输入的通道数, 判别器过滤器数量, 层数=判别器卷积层数量, 层归一化=层归一化)
+    elif 判别器网络名 == '像素':  # 每个像素分类为真或假
+        网络 = 像素判别器(输入的通道数, 判别器过滤器数量, 层归一化=层归一化)
+    else:
+        raise NotImplementedError('判别器网络名 [%s] 不在范围中' % 判别器网络名)
+
+    return 初始化网络(网络, 初始化类型=网络初始化类型, 初始化比例因子=初始化比例因子, 图形处理单元标识码=图形处理单元标识码)
 
 
 class 残差神经网络生成器(nn.Module):
@@ -248,3 +260,66 @@ class U型网络跳过连接块(nn.Module):
             return self.模型(x)
         else:
             return torch.cat([x, self.模型(x)], 1)
+
+
+class 多层判别器(nn.Module):
+    def __init__(self, 输入的通道数, 过滤器数量=64, 层数=3, 层归一化=nn.BatchNorm2d):
+        super(多层判别器, self).__init__()
+        if type(层归一化) == functools.partial:
+            是否使用偏差 = 层归一化.func == nn.InstanceNorm2d
+        else:
+            是否使用偏差 = 层归一化 == nn.InstanceNorm2d
+
+        内核尺寸 = 4
+        填充大小 = 1
+        模型 = [nn.Conv2d(输入的通道数, 过滤器数量, kernel_size=内核尺寸, stride=2, padding=填充大小), nn.LeakyReLU(0.2, True)]
+        过滤器数量乘数 = 1
+        当前过滤器数量乘数 = 1
+        for n in range(1, 层数):
+            当前过滤器数量乘数 = 过滤器数量乘数
+            过滤器数量乘数 = min(2 ** n, 8)
+            模型 += [
+                nn.Conv2d(过滤器数量 * 当前过滤器数量乘数, 过滤器数量 * 过滤器数量乘数, kernel_size=内核尺寸, stride=2, padding=填充大小,
+                          bias=是否使用偏差),
+                层归一化(过滤器数量 * 过滤器数量乘数),
+                nn.LeakyReLU(0.2, True)
+            ]
+
+        当前过滤器数量乘数 = 过滤器数量乘数
+        过滤器数量乘数 = min(2 ** 层数, 8)
+        模型 += [
+            nn.Conv2d(过滤器数量 * 当前过滤器数量乘数, 过滤器数量 * 过滤器数量乘数, kernel_size=内核尺寸, stride=1, padding=填充大小, bias=是否使用偏差),
+            层归一化(过滤器数量 * 过滤器数量乘数),
+            nn.LeakyReLU(0.2, True)
+        ]
+
+        模型 += [nn.Conv2d(过滤器数量 * 过滤器数量乘数, 1, kernel_size=内核尺寸, stride=1, padding=填充大小)]  # 输出单通道的预测图
+        self.模型 = nn.Sequential(*模型)
+
+    def forward(self, 输入):
+        return self.模型(输入)
+
+
+class 像素判别器(nn.Module):
+    """定义一个1*1的补丁版生成式对抗神经网络（像素版生成式对抗神经网络）"""
+
+    def __init__(self, 输入的通道数, 过滤器数量=64, 层归一化=nn.BatchNorm2d):
+        super(像素判别器, self).__init__()
+        if type(层归一化) == functools.partial:
+            是否使用偏差 = 层归一化.func == nn.InstanceNorm2d
+        else:
+            是否使用偏差 = 层归一化 == nn.InstanceNorm2d
+
+        self.网络 = [
+            nn.Conv2d(输入的通道数, 过滤器数量, kernel_size=1, stride=1, padding=0),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(输入的通道数, 过滤器数量 * 2, kernel_size=1, stride=1, padding=0, bias=是否使用偏差),
+            层归一化(过滤器数量 * 2),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(过滤器数量 * 2, 1, kernel_size=1, stride=1, padding=0, bias=是否使用偏差)
+        ]
+
+        self.网络 = nn.Sequential(*self.网络)
+
+    def forward(self, 输入):
+        return self.网络(输入)
