@@ -29,7 +29,7 @@ class 训练用选项(基础选项):
         解析器.add_argument('--学习率', type=float, default=0.0002, help='初始化片刻自适应估计算法的学习率')
         解析器.add_argument('--生成式对抗神经网络模式', type=str, default='lsgan',
                          help='生成式对抗神经网络目标的类型[vanilla| lsgan | wgangp]。香草（vanilla）生成式对抗网络损失函数是交叉熵目标函数，生成式对抗网络原始论文里有用到它')
-        解析器.add_argument('--缓冲区图像尺寸', type=int, default=50, help='存储先前生成的图像，在缓冲区图像的尺寸')
+        解析器.add_argument('--池塘大小', type=int, default=50, help='存储先前生成的图像，不止一张图像，而是很多张')
         解析器.add_argument('--学习率策略', type=str, default='线性', help='学习率变化策略[线性 | step | plateau | cosine]')
         解析器.add_argument('--迭代衰减间隔', type=int, default=50, help='多少次迭代乘以一个伽马值，即多少次迭代衰减一次')
 

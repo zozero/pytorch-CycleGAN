@@ -1,3 +1,4 @@
+from 工具仓.图像池塘类 import 图像池塘
 from 模型仓 import 多个神经网络
 from 模型仓.基础模型类 import 基础模型
 
@@ -32,7 +33,11 @@ class 循环生成式对抗神经网络模型(基础模型):
                                        选项.初始化比例因子, self.图形处理单元标识码)
 
         if self.是否为训练模式:
-            pass
+            if 选项.lambda_自身 > 0:
+                assert (选项.输入通道数 == 选项.输出通道数)
+
+            self.假图A的池塘 = 图像池塘(选项.池塘大小)  # 创建图像缓冲区以存储先前生成的图像
+            self.假图B的池塘 = 图像池塘(选项.池塘大小)
 
     @staticmethod
     def 修改命令行选项(解析器, 是否为训练模式=True):
@@ -40,7 +45,7 @@ class 循环生成式对抗神经网络模型(基础模型):
         if 是否为训练模式:
             解析器.add_argument('--lambda_A', type=float, default=10.0, help='循环损失权重 (A -> B -> A)')
             解析器.add_argument('--lambda_B', type=float, default=10.0, help='循环损失权重 (B -> A -> B)')
-            解析器.add_argument('--lambda_个性', type=float, default=0.5,
-                             help='使用个性映射。 将 lambda_个性 设置为 0 以外的值具有缩放个性映射损失权重的效果。 ' +
-                                  '例如，如果个性损失的权重应该比重建损失的权重小 10 倍，请设置 lambda_个性 = 0.1')
+            解析器.add_argument('--lambda_自身', type=float, default=0.5,
+                             help='使用自身映射。 将 lambda_自身 设置为 0 以外的值具有缩放自身映射损失权重的效果。 ' +
+                                  '例如，如果自身损失的权重应该比重建损失的权重小 10 倍，请设置 lambda_自身 = 0.1')
         return 解析器
