@@ -1,9 +1,24 @@
+import torch.nn
+
+import itertools
 from 工具仓.图像池塘类 import 图像池塘
 from 模型仓 import 多个神经网络
 from 模型仓.基础模型类 import 基础模型
 
 
 class 循环生成式对抗神经网络模型(基础模型):
+    @staticmethod
+    def 修改命令行选项(解析器, 是否为训练模式=True):
+        解析器.set_defaults(no_dropout=True)
+        if 是否为训练模式:
+            解析器.add_argument('--lambda_A', type=float, default=10.0, help='循环损失权重 (A -> B -> A)')
+            解析器.add_argument('--lambda_B', type=float, default=10.0, help='循环损失权重 (B -> A -> B)')
+            解析器.add_argument('--lambda_自身', type=float, default=0.5,
+                             help='使用自身映射。 将 lambda_自身 设置为 0 以外的值具有缩放自身映射损失权重的效果。 '
+                                  '例如，如果自身损失的权重应该比重建损失的权重小 10 倍，请设置 lambda_自身 = 0.1，'
+                                  '自身就是把生成出的图像放到生成器中生成一个新图像，计算两图像的损失值，损失值越小越好')
+        return 解析器
+
     def __init__(self, 选项):
         基础模型.__init__(self, 选项)
         # 指定要打印的训练产生的损失值。“个性”是指 结果B->生成器A到B->结果B
@@ -11,7 +26,7 @@ class 循环生成式对抗神经网络模型(基础模型):
         # 指定要保存/显示的图片。（重建 reconstruction images  重新构建的图片）
         可视化图片名列表A = ['真A', '假B', '重建A']
         可视化图片名列表B = ['真B', '假A', '重建B']
-        if self.是否为训练模式 and self.选项.lambda_个性 > 0.0:
+        if self.是否为训练模式 and self.选项.lambda_自身 > 0.0:
             可视化图片名列表A.append('个性B')
             可视化图片名列表B.append('个性A')
 
@@ -35,17 +50,90 @@ class 循环生成式对抗神经网络模型(基础模型):
         if self.是否为训练模式:
             if 选项.lambda_自身 > 0:
                 assert (选项.输入通道数 == 选项.输出通道数)
+            self.生成图A的池塘 = 图像池塘(选项.池塘大小)  # 创建图像缓冲区以存储先前生成的图像
+            self.生成图B的池塘 = 图像池塘(选项.池塘大小)
+            # 定义损失值函数
+            self.标准生成式对抗神经网络损失值函数 = 多个神经网络.生成式对抗神经网络损失值函数(选项.生成式对抗神经网络损失值类型).to(self.图形处理单元标识码)
+            self.标准循环网络损失值函数 = torch.nn.L1Loss()
+            self.标准自身损失值函数 = torch.nn.L1Loss()
+            # 初始化优化器，调度器将由函数<基础模型.setup>自动实现
+            self.生成器的优化器 = torch.optim.Adam(itertools.chain(self.生成器网络A.parameters(), self.生成器网络B.parameters()),
+                                            lr=选项.学习率, betas=(选项.贝塔值1, 0.999))
+            self.判别器的优化器 = torch.optim.Adam(itertools.chain(self.判别器网络A.parameters(), self.判别器网络B.parameters()),
+                                            lr=选项.学习率, betas=(选项.贝塔值1, 0.999))
+            self.优化器列表.append(self.生成器的优化器)
+            self.优化器列表.append(self.判别器的优化器)
 
-            self.假图A的池塘 = 图像池塘(选项.池塘大小)  # 创建图像缓冲区以存储先前生成的图像
-            self.假图B的池塘 = 图像池塘(选项.池塘大小)
+    def 设置输入(self, 输入):
+        """
+        从数据加载器中解压输入数据并执行必要的预处理步骤
+        :param 输入:
+        :return:
+        """
+        A到B = self.选项.方向 == 'A到B'
+        self.原始图A = 输入['A' if A到B else 'B'].to(self.图形处理单元标识码)
+        self.原始图B = 输入['B' if A到B else 'A'].to(self.图形处理单元标识码)
+        self.图片路径列表 = 输入['路径A' if A到B else '路径B']  # 可能需要修改字符串
 
-    @staticmethod
-    def 修改命令行选项(解析器, 是否为训练模式=True):
-        解析器.set_defaults(no_dropout=True)
-        if 是否为训练模式:
-            解析器.add_argument('--lambda_A', type=float, default=10.0, help='循环损失权重 (A -> B -> A)')
-            解析器.add_argument('--lambda_B', type=float, default=10.0, help='循环损失权重 (B -> A -> B)')
-            解析器.add_argument('--lambda_自身', type=float, default=0.5,
-                             help='使用自身映射。 将 lambda_自身 设置为 0 以外的值具有缩放自身映射损失权重的效果。 ' +
-                                  '例如，如果自身损失的权重应该比重建损失的权重小 10 倍，请设置 lambda_自身 = 0.1')
-        return 解析器
+    def 前向传播(self):
+        self.生成图B = self.生成器网络A(self.原始图A)
+        self.还原图A = self.生成器网络B(self.生成图B)
+        self.生成图A = self.生成器网络B(self.原始图B)
+        self.还原图B = self.生成器网络A(self.生成图A)
+
+    def 生成器的后向传播(self):
+        lambda_自身 = self.选项.lambda_自身
+        lambda_A = self.选项.lambda_A
+        lambda_B = self.选项.lambda_B
+
+        if lambda_自身 > 0:
+            self.自身A = self.生成器网络A(self.原始图B)
+            self.自身A的损失值 = self.标准自身损失值函数(self.自身A, self.原始图B)
+            self.自身B = self.生成器网络B(self.原始图A)
+            self.自身B的损失值 = self.标准自身损失值函数(self.自身B, self.原始图A)
+        else:
+            self.自身A的损失值 = 0
+            self.自身B的损失值 = 0
+
+        # 这里的目的是从生成器角度出发，它需要骗过判别器，所以判别器的结果到真值的距离就成为损失值的计算输入
+        self.生成器A的损失值 = self.标准生成式对抗神经网络损失值函数(self.判别器网络A(self.生成图B), True)
+        self.生成器B的损失值 = self.标准生成式对抗神经网络损失值函数(self.判别器网络B(self.生成图A), True)
+
+        self.循环网络A的损失值 = self.标准循环网络损失值函数(self.还原图A, self.原始图A) * lambda_A
+        self.循环网络B的损失值 = self.标准循环网络损失值函数(self.还原图B, self.原始图B) * lambda_B
+
+        self.生成器的损失值 = self.生成器A的损失值 + self.生成器B的损失值 + self.循环网络A的损失值 + self.循环网络B的损失值 + self.自身A的损失值 + self.生成器B的损失值
+        self.生成器的损失值.backward()
+
+    def 判别器基本的后向传播(self, 判别器网络, 原始图, 生成图):
+        原始图的预测图 = 判别器网络(原始图)
+        原始图的判别器损失值 = self.标准生成式对抗神经网络损失值函数(原始图的预测图, True)
+
+        生成图的预测图 = 判别器网络(生成图)
+        生成图的判别器损失值 = self.标准生成式对抗神经网络损失值函数(生成图的预测图, False)
+
+        # 计算损失和计算梯度
+        判别器损失值 = (原始图的判别器损失值 + 生成图的判别器损失值) * 0.5
+        判别器损失值.backward()
+        return 判别器损失值
+
+    def 判别器A的后向传播(self):
+        生成图B = self.生成图B的池塘.查询(self.生成图B)
+        self.判别器A的损失值 = self.判别器基本的后向传播(self.判别器网络A, self.原始图B, 生成图B)
+
+    def 判别器B的后向传播(self):
+        生成图A = self.生成图A的池塘.查询(self.生成图A)
+        self.判别器B的损失值 = self.判别器基本的后向传播(self.判别器网络B, self.原始图A, 生成图A)
+
+    def 优化器参数(self):
+        self.前向传播()
+        self.设置需要的梯度([self.判别器网络A, self.判别器网络B], False)
+        self.生成器的优化器.zero_grad()
+        self.生成器的后向传播()
+        self.生成器的优化器.step()
+
+        self.设置需要的梯度([self.判别器网络A, self.判别器网络B], False)
+        self.判别器的优化器.zero_grad()
+        self.判别器A的后向传播()
+        self.判别器B的后向传播()
+        self.判别器的优化器.step()

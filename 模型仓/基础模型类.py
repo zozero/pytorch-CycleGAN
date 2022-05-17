@@ -29,7 +29,7 @@ class 基础模型(ABC):
         return 选项
 
     @abstractmethod
-    def 设置输入步骤(self):
+    def 设置输入(self, 输入):
         # 从数据加载器中解压输入数据并执行必要的预处理步骤
         pass
 
@@ -38,7 +38,7 @@ class 基础模型(ABC):
         pass
 
     @abstractmethod
-    def 设置优化器参数(self):
+    def 优化器参数(self):
         # 计算损失、梯度，并更新网络权重；在每次训练迭代中调用
         pass
 
@@ -91,3 +91,11 @@ class 基础模型(ABC):
                 状态字典.pop('.'.join(键值列表))
         else:
             self.__修补规范的实例以兼容状态字典(状态字典, getattr(模型, 键值), 键值列表, 索引 + 1)
+
+    def 设置需要的梯度(self, 网络列表, 是否需要梯度=False):
+        if not isinstance(网络列表, list):
+            网络列表 = [网络列表]
+        for 网络 in 网络列表:
+            if 网络 is not None:
+                for 参数 in 网络.parameters():
+                    参数.requires_grad = 是否需要梯度

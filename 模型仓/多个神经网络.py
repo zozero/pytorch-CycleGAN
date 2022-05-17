@@ -60,7 +60,7 @@ def 初始化网络(网络, 初始化类型='常规', 初始化比例因子=0.02
 def 获取调度器(优化器, 选项):
     if 选项.学习率策略 == '线性':
         def lambda_规则(轮回):
-            # 这个公式什么意思暂时没看懂......
+            # 用于处理学习率随着轮回变化的函数
             线性学习率 = 1.0 - max(0, 轮回 + 选项.轮回起始数 - 选项.轮回次数) / float(选项.轮回衰减数 + 1)
             return 线性学习率
 
@@ -110,18 +110,53 @@ def 定义判别器(输入的通道数, 判别器过滤器数量, 判别器网�
     return 初始化网络(网络, 初始化类型=网络初始化类型, 初始化比例因子=初始化比例因子, 图形处理单元标识码=图形处理单元标识码)
 
 
+class 生成式对抗神经网络损失值函数(nn.Module):
+    def __init__(self, 生成式对抗神经网络损失值类型, 真目标的标签=1.0, 假目标的标签=0.0):
+        super(生成式对抗神经网络损失值函数, self).__init__()
+        self.register_buffer('真标签', torch.tensor(真目标的标签))
+        self.register_buffer('假标签', torch.tensor(假目标的标签))
+        self.生成式对抗神经网络损失值类型 = 生成式对抗神经网络损失值类型
+        if 生成式对抗神经网络损失值类型 == '生成式对抗神经网络损失值函数':
+            self.损失值函数 = nn.MSELoss()
+        elif 生成式对抗神经网络损失值类型 == '香草':
+            self.损失值函数 = nn.BCEWithLogitsLoss()
+        elif 生成式对抗神经网络损失值类型 == 'wgangp':
+            self.损失值函数 = None
+        else:
+            raise NotImplementedError('生成式对抗神经网络类型 %s 没有实施' % 生成式对抗神经网络损失值类型)
+
+    def 取得目标张量(self, 预测值, 目标是否为真目标):
+        if 目标是否为真目标:
+            目标张量 = self.真标签  # 该值在self.register_buffer中已注册在对象内
+        else:
+            目标张量 = self.假标签  # 该值在self.register_buffer中已注册在对象内
+        return 目标张量.expands_as(预测值)
+
+    def __call__(self, 预测值, 目标是否为真目标):
+        if self.生成式对抗神经网络损失值类型 in ['生成式对抗神经网络损失值函数', '香草']:
+            目标张量 = self.取得目标张量(预测值, 目标是否为真目标)
+            损失值 = self.损失值函数(预测值, 目标张量)
+        elif self.生成式对抗神经网络损失值类型 == 'wgangp':
+            if 目标是否为真目标:
+                损失值 = -预测值.mean()
+            else:
+                损失值 = 预测值.mean()
+
+        return 损失值
+
+
 class 残差神经网络生成器(nn.Module):
     def __init__(self, 输入的通道数, 输出的通道数, 生成器过滤器数量=64, 层归一化=nn.BatchNorm2d, 是否使用失活率=False, 块数=6, 填充类型='反射'):
         assert (块数 >= 0)
         super(残差神经网络生成器, self).__init__()
         if type(层归一化) == functools.partial:
-            是否使用偏差 = 层归一化.func == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化.func == nn.InstanceNorm2d
         else:
-            是否使用偏差 = 层归一化 == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化 == nn.InstanceNorm2d
 
         模型 = [
             nn.ReflectionPad2d(3),
-            nn.Conv2d(输入的通道数, 生成器过滤器数量, kernel_size=7, padding=0, bias=是否使用偏差),
+            nn.Conv2d(输入的通道数, 生成器过滤器数量, kernel_size=7, padding=0, bias=是否使用偏置项),
             层归一化(生成器过滤器数量),
             nn.ReLU(True)
         ]
@@ -130,14 +165,14 @@ class 残差神经网络生成器(nn.Module):
         for i in range(下采样数量):
             倍数 = 2 ** i
             模型 += [
-                nn.Conv2d(生成器过滤器数量 * 倍数, 生成器过滤器数量 * 倍数 * 2, kernel_size=3, stride=2, padding=1, bias=是否使用偏差),
+                nn.Conv2d(生成器过滤器数量 * 倍数, 生成器过滤器数量 * 倍数 * 2, kernel_size=3, stride=2, padding=1, bias=是否使用偏置项),
                 层归一化(生成器过滤器数量 * 倍数 * 2),
                 nn.ReLU(True)
             ]
 
         倍数 = 2 ** 下采样数量
         for i in range(块数):
-            模型 += [残差神经网络块(生成器过滤器数量 * 倍数, 填充类型=填充类型, 层归一化=层归一化, 是否使用失活率=是否使用失活率, 是否使用偏差=是否使用偏差)]
+            模型 += [残差神经网络块(生成器过滤器数量 * 倍数, 填充类型=填充类型, 层归一化=层归一化, 是否使用失活率=是否使用失活率, 是否使用偏置项=是否使用偏置项)]
 
         for i in range(下采样数量):
             倍数 = 2 ** (下采样数量 - i)
@@ -149,7 +184,7 @@ class 残差神经网络生成器(nn.Module):
                     stride=2,
                     padding=1,
                     output_padding=1,
-                    bias=是否使用偏差
+                    bias=是否使用偏置项
                 ),
                 层归一化(int(生成器过滤器数量 * 倍数 / 2)),
                 nn.ReLU(True)
@@ -165,11 +200,11 @@ class 残差神经网络生成器(nn.Module):
 
 
 class 残差神经网络块(nn.Module):
-    def __init__(self, 维度数, 填充类型, 层归一化, 是否使用失活率, 是否使用偏差):
+    def __init__(self, 维度数, 填充类型, 层归一化, 是否使用失活率, 是否使用偏置项):
         super(残差神经网络块, self).__init__()
-        self.卷积块 = self.构建卷积块(维度数, 填充类型, 层归一化, 是否使用失活率, 是否使用偏差)
+        self.卷积块 = self.构建卷积块(维度数, 填充类型, 层归一化, 是否使用失活率, 是否使用偏置项)
 
-    def 构建卷积块(self, 维度数, 填充类型, 层归一化, 是否使用失活率, 是否使用偏差):
+    def 构建卷积块(self, 维度数, 填充类型, 层归一化, 是否使用失活率, 是否使用偏置项):
         卷积块 = []
         p = 0
         if 填充类型 == '反射':
@@ -180,7 +215,7 @@ class 残差神经网络块(nn.Module):
             p = 1
         else:
             raise NotImplementedError('填充 [%s] 没有实施' % 填充类型)
-        卷积块 += [nn.Conv2d(维度数, 维度数, kernel_size=3, padding=p, bias=是否使用偏差), 层归一化(维度数), nn.ReLU(True)]
+        卷积块 += [nn.Conv2d(维度数, 维度数, kernel_size=3, padding=p, bias=是否使用偏置项), 层归一化(维度数), nn.ReLU(True)]
         if 是否使用失活率:
             卷积块 += [nn.Dropout(0.5)]
 
@@ -193,7 +228,7 @@ class 残差神经网络块(nn.Module):
             p = 1
         else:
             raise NotImplementedError('填充 [%s] 没有实施' % 填充类型)
-        卷积块 += [nn.Conv2d(维度数, 维度数, kernel_size=3, padding=p, bias=是否使用偏差), 层归一化(维度数)]
+        卷积块 += [nn.Conv2d(维度数, 维度数, kernel_size=3, padding=p, bias=是否使用偏置项), 层归一化(维度数)]
 
         return nn.Sequential(*卷积块)
 
@@ -223,12 +258,12 @@ class U型网络跳过连接块(nn.Module):
         super(U型网络跳过连接块, self).__init__()
         self.是否为最外层模块 = 是否为最外层模块
         if type(层归一化) == functools.partial:
-            是否使用偏差 = 层归一化.func == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化.func == nn.InstanceNorm2d
         else:
-            是否使用偏差 = 层归一化 == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化 == nn.InstanceNorm2d
         if 输入的通道数 is None:
             输入的通道数 = 卷积层外过滤器数量
-        下卷积层 = nn.Conv2d(输入的通道数, 卷积层内过滤器数量, kernel_size=4, stride=2, padding=1, bias=是否使用偏差)
+        下卷积层 = nn.Conv2d(输入的通道数, 卷积层内过滤器数量, kernel_size=4, stride=2, padding=1, bias=是否使用偏置项)
         下线性整流函数 = nn.LeakyReLU(0.2, True)
         下归一化 = 层归一化(卷积层内过滤器数量)
         上线性整流函数 = nn.ReLU(True)
@@ -240,12 +275,12 @@ class U型网络跳过连接块(nn.Module):
             上 = [上线性整流函数, 上卷积层, nn.Tanh()]
             模型 = 下 + [子模块] + 上
         elif 是否为最内层模块:
-            上卷积层 = nn.ConvTranspose2d(卷积层内过滤器数量, 卷积层外过滤器数量, kernel_size=4, stride=2, padding=1, bias=是否使用偏差)
+            上卷积层 = nn.ConvTranspose2d(卷积层内过滤器数量, 卷积层外过滤器数量, kernel_size=4, stride=2, padding=1, bias=是否使用偏置项)
             下 = [下线性整流函数, 下卷积层]
             上 = [上线性整流函数, 上卷积层, 上归一化]
             模型 = 下 + 上
         else:
-            上卷积层 = nn.ConvTranspose2d(卷积层内过滤器数量 * 2, 卷积层外过滤器数量, kernel_size=4, stride=2, padding=1, bias=是否使用偏差)
+            上卷积层 = nn.ConvTranspose2d(卷积层内过滤器数量 * 2, 卷积层外过滤器数量, kernel_size=4, stride=2, padding=1, bias=是否使用偏置项)
             下 = [下线性整流函数, 下卷积层, 下归一化]
             上 = [上线性整流函数, 上卷积层, 上归一化]
             if 是否使用失活率:
@@ -266,9 +301,9 @@ class 多层判别器(nn.Module):
     def __init__(self, 输入的通道数, 过滤器数量=64, 层数=3, 层归一化=nn.BatchNorm2d):
         super(多层判别器, self).__init__()
         if type(层归一化) == functools.partial:
-            是否使用偏差 = 层归一化.func == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化.func == nn.InstanceNorm2d
         else:
-            是否使用偏差 = 层归一化 == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化 == nn.InstanceNorm2d
 
         内核尺寸 = 4
         填充大小 = 1
@@ -280,7 +315,7 @@ class 多层判别器(nn.Module):
             过滤器数量乘数 = min(2 ** n, 8)
             模型 += [
                 nn.Conv2d(过滤器数量 * 当前过滤器数量乘数, 过滤器数量 * 过滤器数量乘数, kernel_size=内核尺寸, stride=2, padding=填充大小,
-                          bias=是否使用偏差),
+                          bias=是否使用偏置项),
                 层归一化(过滤器数量 * 过滤器数量乘数),
                 nn.LeakyReLU(0.2, True)
             ]
@@ -288,12 +323,12 @@ class 多层判别器(nn.Module):
         当前过滤器数量乘数 = 过滤器数量乘数
         过滤器数量乘数 = min(2 ** 层数, 8)
         模型 += [
-            nn.Conv2d(过滤器数量 * 当前过滤器数量乘数, 过滤器数量 * 过滤器数量乘数, kernel_size=内核尺寸, stride=1, padding=填充大小, bias=是否使用偏差),
+            nn.Conv2d(过滤器数量 * 当前过滤器数量乘数, 过滤器数量 * 过滤器数量乘数, kernel_size=内核尺寸, stride=1, padding=填充大小, bias=是否使用偏置项),
             层归一化(过滤器数量 * 过滤器数量乘数),
             nn.LeakyReLU(0.2, True)
         ]
 
-        模型 += [nn.Conv2d(过滤器数量 * 过滤器数量乘数, 1, kernel_size=内核尺寸, stride=1, padding=填充大小)]  # 输出单通道的预测图
+        模型 += [nn.Conv2d(过滤器数量 * 过滤器数量乘数, 1, kernel_size=内核尺寸, stride=1, padding=填充大小)]  # 输出预测图的判断结果
         self.模型 = nn.Sequential(*模型)
 
     def forward(self, 输入):
@@ -306,17 +341,17 @@ class 像素判别器(nn.Module):
     def __init__(self, 输入的通道数, 过滤器数量=64, 层归一化=nn.BatchNorm2d):
         super(像素判别器, self).__init__()
         if type(层归一化) == functools.partial:
-            是否使用偏差 = 层归一化.func == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化.func == nn.InstanceNorm2d
         else:
-            是否使用偏差 = 层归一化 == nn.InstanceNorm2d
+            是否使用偏置项 = 层归一化 == nn.InstanceNorm2d
 
         self.网络 = [
             nn.Conv2d(输入的通道数, 过滤器数量, kernel_size=1, stride=1, padding=0),
             nn.LeakyReLU(0.2, True),
-            nn.Conv2d(输入的通道数, 过滤器数量 * 2, kernel_size=1, stride=1, padding=0, bias=是否使用偏差),
+            nn.Conv2d(输入的通道数, 过滤器数量 * 2, kernel_size=1, stride=1, padding=0, bias=是否使用偏置项),
             层归一化(过滤器数量 * 2),
             nn.LeakyReLU(0.2, True),
-            nn.Conv2d(过滤器数量 * 2, 1, kernel_size=1, stride=1, padding=0, bias=是否使用偏差)
+            nn.Conv2d(过滤器数量 * 2, 1, kernel_size=1, stride=1, padding=0, bias=是否使用偏置项)
         ]
 
         self.网络 = nn.Sequential(*self.网络)

@@ -25,10 +25,11 @@ class 训练用选项(基础选项):
         # 训练时选项
         解析器.add_argument('--轮回次数', type=int, default=100, help='具有初始学习率的轮回数量')
         解析器.add_argument('--轮回衰减数', type=int, default=100, help='将学习率线性衰减为零的轮回数量')
-        解析器.add_argument('--动量项1', type=float, default=0.5, help='片刻自适应估计算法的动量项')
+        解析器.add_argument('--贝塔值1', type=float, default=0.5, help='片刻自适应估计算法的动量项')
         解析器.add_argument('--学习率', type=float, default=0.0002, help='初始化片刻自适应估计算法的学习率')
-        解析器.add_argument('--生成式对抗神经网络模式', type=str, default='lsgan',
-                         help='生成式对抗神经网络目标的类型[vanilla| lsgan | wgangp]。香草（vanilla）生成式对抗网络损失函数是交叉熵目标函数，生成式对抗网络原始论文里有用到它')
+        解析器.add_argument('--生成式对抗神经网络损失值类型', type=str, default='生成式对抗神经网络损失值函数',
+                         help='生成式对抗神经网络目标的类型[香草| 生成式对抗神经网络损失值函数 | '
+                              'wgangp]。香草（vanilla）生成式对抗网络损失函数是交叉熵目标函数，生成式对抗网络原始论文里有用到它')
         解析器.add_argument('--池塘大小', type=int, default=50, help='存储先前生成的图像，不止一张图像，而是很多张')
         解析器.add_argument('--学习率策略', type=str, default='线性', help='学习率变化策略[线性 | step | plateau | cosine]')
         解析器.add_argument('--迭代衰减间隔', type=int, default=50, help='多少次迭代乘以一个伽马值，即多少次迭代衰减一次')
