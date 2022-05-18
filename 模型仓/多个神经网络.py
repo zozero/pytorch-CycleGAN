@@ -130,7 +130,7 @@ class 生成式对抗神经网络损失值函数(nn.Module):
             目标张量 = self.原始图标签  # 该值在self.register_buffer中已注册在对象内
         else:
             目标张量 = self.生成图标签  # 该值在self.register_buffer中已注册在对象内
-        return 目标张量.expands_as(预测值)
+        return 目标张量.expand_as(预测值)
 
     def __call__(self, 预测值, 目标是否为真目标):
         if self.生成式对抗神经网络损失值类型 in ['生成式对抗神经网络损失值函数', '香草']:

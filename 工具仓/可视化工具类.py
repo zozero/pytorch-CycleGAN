@@ -55,7 +55,7 @@ class 可视化工具:
             self.图片目录 = os.path.join(self.网站文件目录, '图片库')
             print('创建网站目录 %s ......' % self.网站文件目录)
             工具函数.新建多个文件夹([self.网站文件目录, self.图片目录])
-            self.日志文件路径 = os.path.join(选项.检查点目录, 选项.名称, '损失值日子.txt')
+            self.日志文件路径 = os.path.join(选项.检查点目录, 选项.名称, '损失值日志.txt')
             with open(self.日志文件路径, 'a') as 日志文件:
                 现在 = time.strftime("%c")
                 日志文件.write('================ 训练时损失值 (%s) ================\n' % 现在)
@@ -162,5 +162,48 @@ class 可视化工具:
                     网页.添加复数图片(图片列表, 文本列表, 链接列表, 宽度=self.窗口尺寸)
                 网页.保存()
 
-    def 统计当前的损失值(self):
-        pass
+    def 统计当前的损失值(self, 轮回索引, 轮回进度, 损失值字典):
+        """
+
+        :param 轮回索引:
+        :param 轮回进度: 当前 轮回 的进度（百分比），介于 0 到 1 之间
+        :param 损失值字典:
+        :return:
+        """
+        if not hasattr(self, '统计的数据'):
+            self.统计的数据 = {'X': [], 'Y': [], '标目': list(损失值字典.keys())}
+        self.统计的数据['X'].append(轮回索引 + 轮回进度)
+        self.统计的数据['Y'].append([损失值字典[k] for k in self.统计的数据['标目']])
+        try:
+            self.可视化实例.line(
+                X=np.stack([np.array(self.统计的数据['X'])] * len(self.统计的数据['标目']), 1),
+                Y=np.stack(self.统计的数据['Y']),
+                opts={
+                    'title': self.名称 + ' 损失值变化趋势图',
+                    'legend': self.统计的数据['标目'],
+                    'xlabel': '轮回',
+                    'ylabel': '损失值'
+                },
+                win=self.显示的标识
+            )
+        except 可视化工具异常基础:
+            self.创建可视化实例连接()
+        if self.是否使用数据库:
+            self.数据库运行实例.log(损失值字典)
+
+    def 显示当前损失值(self, 轮回索引, 单次轮回的迭代数, 损失值字典, 平均时间, 时间记录):
+        """
+
+        :param 轮回索引:
+        :param 单次轮回的迭代数:
+        :param 损失值字典:
+        :param 平均时间:
+        :param 时间记录: 每批的数据加载时间（由 每批数量 平均）
+        :return:
+        """
+        消息 = '(轮回索引：%d，迭代次数：%d，时间：%.3f，数据：%.3f)\t' % (轮回索引, 单次轮回的迭代数, 平均时间, 时间记录)
+        for k, v in 损失值字典.items():
+            消息 += '%s：%.3f\t' % (k, v)
+        print(消息)
+        with open(self.日志文件路径, "a") as 日志:
+            日志.write('%s\n' % 消息)

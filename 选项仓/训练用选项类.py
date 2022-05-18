@@ -18,7 +18,7 @@ class 训练用选项(基础选项):
         # 网络保存和载入的解析器
         解析器.add_argument('--结果保存频率', type=int, default=5000, help='最新结果保存频率')
         解析器.add_argument('--保存轮回频率', type=int, default=5, help='在每次轮回结束时检查点保存的频率')
-        解析器.add_argument('--是否按轮回保存', action='store_true', help='是否按轮回保存')
+        解析器.add_argument('--是否按迭代保存', action='store_true', help='是否按迭代保存')
         解析器.add_argument('--是否继续训练', action='store_true', help='继续训练会加载最新模型')
         解析器.add_argument('--轮回起始数', type=int, default=1, help='起始轮回位置，通过我们保存的模型（起始轮回位置，起始轮回位置+保存频率，......）')
         解析器.add_argument('--阶段', type=str, default='train', help='训练，验证，测试，等等')

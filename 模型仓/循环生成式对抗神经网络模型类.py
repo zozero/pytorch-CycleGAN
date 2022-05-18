@@ -9,7 +9,7 @@ from 模型仓.基础模型类 import 基础模型
 class 循环生成式对抗神经网络模型(基础模型):
     @staticmethod
     def 修改命令行选项(解析器, 是否为训练模式=True):
-        解析器.set_defaults(no_dropout=True)
+        解析器.set_defaults(无失活率=True)
         if 是否为训练模式:
             解析器.add_argument('--lambda_A', type=float, default=10.0, help='循环损失权重 (A -> B -> A)')
             解析器.add_argument('--lambda_B', type=float, default=10.0, help='循环损失权重 (B -> A -> B)')
@@ -21,14 +21,14 @@ class 循环生成式对抗神经网络模型(基础模型):
 
     def __init__(self, 选项):
         基础模型.__init__(self, 选项)
-        # 指定要打印的训练产生的损失值。“个性”是指 结果B->生成器A到B->结果B
-        self.损失值名称列表 = ['判别器A', '生成器A', '循环一致性A', '个性A', '判别器B', '生成器B', '循环一致性B', '个性B']
+        # 指定要打印的训练产生的损失值。“自身”是指 生成图B->生成器A到B->生成图B
+        self.损失值名称列表 = ['判别器A', '生成器A', '循环网络A', '自身A', '判别器B', '生成器B', '循环网络B', '自身B']
         # 指定要保存/显示的图片。（重建 reconstruction images  重新构建的图片）
-        可视化图片名列表A = ['真A', '假B', '重建A']
-        可视化图片名列表B = ['真B', '假A', '重建B']
+        可视化图片名列表A = ['原始图A', '生成图B', '还原图A']
+        可视化图片名列表B = ['原始图B', '生成图A', '还原图B']
         if self.是否为训练模式 and self.选项.lambda_自身 > 0.0:
-            可视化图片名列表A.append('个性B')
-            可视化图片名列表B.append('个性A')
+            可视化图片名列表A.append('自身B')
+            可视化图片名列表B.append('自身A')
 
         self.可视化图片名列表 = 可视化图片名列表A + 可视化图片名列表B
         if self.是否为训练模式:
@@ -73,7 +73,7 @@ class 循环生成式对抗神经网络模型(基础模型):
         A到B = self.选项.方向 == 'A到B'
         self.原始图A = 输入['A' if A到B else 'B'].to(self.设备)
         self.原始图B = 输入['B' if A到B else 'A'].to(self.设备)
-        self.图片路径列表 = 输入['路径A' if A到B else '路径B']  # 可能需要修改字符串
+        self.图片路径列表 = 输入['A路径' if A到B else 'B路径']
 
     def 计算前向传播(self):
         self.生成图B = self.生成器网络A(self.原始图A)
@@ -108,8 +108,7 @@ class 循环生成式对抗神经网络模型(基础模型):
     def 计算判别器基本的后向传播(self, 判别器网络, 原始图, 生成图):
         原始图的预测图 = 判别器网络(原始图)
         原始图的判别器损失值 = self.标准生成式对抗神经网络损失值函数(原始图的预测图, True)
-
-        生成图的预测图 = 判别器网络(生成图)
+        生成图的预测图 = 判别器网络(生成图.detach())
         生成图的判别器损失值 = self.标准生成式对抗神经网络损失值函数(生成图的预测图, False)
 
         # 计算损失和计算梯度
@@ -127,12 +126,12 @@ class 循环生成式对抗神经网络模型(基础模型):
 
     def 计算优化器参数(self):
         self.计算前向传播()
-        self.设置需要的梯度([self.判别器网络A, self.判别器网络B], False)
+        self.设置需要的梯度([self.判别器网络A, self.判别器网络B], False)  # 优化 生成器 时 判别器 不需要梯度
         self.生成器的优化器.zero_grad()
         self.计算生成器的后向传播()
         self.生成器的优化器.step()
 
-        self.设置需要的梯度([self.判别器网络A, self.判别器网络B], False)
+        self.设置需要的梯度([self.判别器网络A, self.判别器网络B], True)
         self.判别器的优化器.zero_grad()
         self.计算判别器A的后向传播()
         self.计算判别器B的后向传播()

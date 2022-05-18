@@ -17,9 +17,9 @@ class 基础模型(ABC):
         if 选项.图像预处理 != '宽度与比例':
             torch.backends.cudnn.benchmark = True
 
-        self.损失函数名称列表 = []
+        self.损失值名称列表 = []
         self.模型名称列表 = []
-        self.可视化名称列表 = []
+        self.可视化图片名列表 = []
         self.优化器列表 = []
         self.图片路径列表 = []
         self.公制 = 0  # 用于学习率策略“高原” 这是什么有待进一步分析
@@ -58,9 +58,9 @@ class 基础模型(ABC):
         # 从磁盘加载所有网络
         for 名称 in self.模型名称列表:
             if isinstance(名称, str):
-                生成的文件名 = '%s的第%s轮' % (名称, 轮回的位子)
+                生成的文件名 = '%s_%s' % (名称, 轮回的位子)
                 生成的路径 = os.path.join(self.保存目录, 生成的文件名)
-                网络 = getattr(self, 名称 + '的网络')
+                网络 = getattr(self, 名称)
                 if isinstance(网络, torch.nn.DataParallel):
                     网络 = 网络.module
                 print('从%s载入模型' % 生成的路径)
@@ -81,7 +81,7 @@ class 基础模型(ABC):
                     参数数量 += 参数.numel()
                 if 冗余信息:
                     print(网络)
-                print('[神经网络 %s] 参数全部数量 : %.3f M' % (模型名, 参数数量 / 1e6))  # 有待运行后进一步查看
+                print('[%s] 参数全部数量 : %.3f M' % (模型名, 参数数量 / 1e6))  # 有待运行后进一步查看
         print('-----------------------------------------------')
 
     def 更新学习率(self):
@@ -96,10 +96,30 @@ class 基础模型(ABC):
 
     def 获得当前视觉效果(self):
         视觉效果返回值 = OrderedDict()
-        for 名称 in self.可视化名称列表:
+        for 名称 in self.可视化图片名列表:
             if isinstance(名称, str):
                 视觉效果返回值[名称] = getattr(self, 名称)
         return 视觉效果返回值
+
+    def 获得当前损失值(self):
+        损失值字典返回值 = OrderedDict()
+        for 名称 in self.损失值名称列表:
+            if isinstance(名称, str):
+                损失值字典返回值[名称] = float(getattr(self, 名称 + '的损失值'))
+        return 损失值字典返回值
+
+    def 保存神经网络(self, 后缀):
+        for 名称 in self.模型名称列表:
+            if isinstance(名称, str):
+                保存文件名 = '%s_%s.pth' % (名称, 后缀)
+                保存路径 = os.path.join(self.保存目录, 保存文件名)
+                网络 = getattr(self, 名称)
+
+                if len(self.图形处理单元标识码) > 0 and torch.cuda.is_available():
+                    torch.save(网络.module.cpu().state_dict(), 保存路径)
+                    网络.cuda(self.图形处理单元标识码[0])
+                else:
+                    torch.save(网络.cpu().state_dict(), 保存路径)
 
     def __修补规范的实例以兼容状态字典(self, 状态字典, 模型, 键值列表, 索引=0):
         键值 = 键值列表[索引]
