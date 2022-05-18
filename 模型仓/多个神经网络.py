@@ -61,7 +61,7 @@ def 获取调度器(优化器, 选项):
     if 选项.学习率策略 == '线性':
         def lambda_规则(轮回):
             # 用于处理学习率随着轮回变化的函数
-            线性学习率 = 1.0 - max(0, 轮回 + 选项.轮回起始数 - 选项.轮回次数) / float(选项.轮回衰减数 + 1)
+            线性学习率 = 1.0 - max(0, 轮回 + 选项.轮回起始数 - 选项.总轮回数) / float(选项.轮回衰减数 + 1)
             return 线性学习率
 
         调度器 = lr_scheduler.LambdaLR(优化器, lr_lambda=lambda_规则)
@@ -111,10 +111,10 @@ def 定义判别器(输入的通道数, 判别器过滤器数量, 判别器网�
 
 
 class 生成式对抗神经网络损失值函数(nn.Module):
-    def __init__(self, 生成式对抗神经网络损失值类型, 真目标的标签=1.0, 假目标的标签=0.0):
+    def __init__(self, 生成式对抗神经网络损失值类型, 原始图目标的标签=1.0, 生成图目标的标签=0.0):
         super(生成式对抗神经网络损失值函数, self).__init__()
-        self.register_buffer('真标签', torch.tensor(真目标的标签))
-        self.register_buffer('假标签', torch.tensor(假目标的标签))
+        self.register_buffer('原始图标签', torch.tensor(原始图目标的标签))
+        self.register_buffer('生成图标签', torch.tensor(生成图目标的标签))
         self.生成式对抗神经网络损失值类型 = 生成式对抗神经网络损失值类型
         if 生成式对抗神经网络损失值类型 == '生成式对抗神经网络损失值函数':
             self.损失值函数 = nn.MSELoss()
@@ -127,9 +127,9 @@ class 生成式对抗神经网络损失值函数(nn.Module):
 
     def 取得目标张量(self, 预测值, 目标是否为真目标):
         if 目标是否为真目标:
-            目标张量 = self.真标签  # 该值在self.register_buffer中已注册在对象内
+            目标张量 = self.原始图标签  # 该值在self.register_buffer中已注册在对象内
         else:
-            目标张量 = self.假标签  # 该值在self.register_buffer中已注册在对象内
+            目标张量 = self.生成图标签  # 该值在self.register_buffer中已注册在对象内
         return 目标张量.expands_as(预测值)
 
     def __call__(self, 预测值, 目标是否为真目标):

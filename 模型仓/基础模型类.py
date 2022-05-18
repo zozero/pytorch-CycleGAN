@@ -34,11 +34,11 @@ class 基础模型(ABC):
         pass
 
     @abstractmethod
-    def 前向传播(self):
+    def 计算前向传播(self):
         pass
 
     @abstractmethod
-    def 优化器参数(self):
+    def 计算优化器参数(self):
         # 计算损失、梯度，并更新网络权重；在每次训练迭代中调用
         pass
 
@@ -50,6 +50,9 @@ class 基础模型(ABC):
             加入后缀 = '迭代_%d' % 选项.迭代的位子 if 选项.迭代的位子 > 0 else 选项.轮回的位子
             self.载入神经网络(加入后缀)
         self.打印神经网络(选项.冗余信息)
+
+    def 计算视觉效果(self):
+        pass
 
     def 载入神经网络(self, 轮回的位子):
         # 从磁盘加载所有网络
@@ -72,7 +75,7 @@ class 基础模型(ABC):
         print('---------- 已初始化神经网络 -------------')
         for 模型名 in self.模型名称列表:
             if isinstance(模型名, str):
-                网络 = getattr(self, 模型名 + '的网络')
+                网络 = getattr(self, 模型名)
                 参数数量 = 0
                 for 参数 in 网络.parameters():
                     参数数量 += 参数.numel()
@@ -80,6 +83,23 @@ class 基础模型(ABC):
                     print(网络)
                 print('[神经网络 %s] 参数全部数量 : %.3f M' % (模型名, 参数数量 / 1e6))  # 有待运行后进一步查看
         print('-----------------------------------------------')
+
+    def 更新学习率(self):
+        老学习率 = self.优化器列表[0].param_groups[0]['lr']
+        for 调度器 in self.调度器列表:
+            if self.选项.学习率策略 == 'plateau':
+                调度器.step(self.公制)
+            else:
+                调度器.step()
+        学习率 = self.优化器列表[0].param_groups[0]['lr']
+        print('学习率 %.7f -> %.7f' % (老学习率, 学习率))
+
+    def 获得当前视觉效果(self):
+        视觉效果返回值 = OrderedDict()
+        for 名称 in self.可视化名称列表:
+            if isinstance(名称, str):
+                视觉效果返回值[名称] = getattr(self, 名称)
+        return 视觉效果返回值
 
     def __修补规范的实例以兼容状态字典(self, 状态字典, 模型, 键值列表, 索引=0):
         键值 = 键值列表[索引]

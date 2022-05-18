@@ -32,9 +32,9 @@ class 循环生成式对抗神经网络模型(基础模型):
 
         self.可视化图片名列表 = 可视化图片名列表A + 可视化图片名列表B
         if self.是否为训练模式:
-            self.模型名称列表 = ['生成器A', '生成器B', '判别器A', '判别器B']
+            self.模型名称列表 = ['生成器网络A', '生成器网络B', '判别器网络A', '判别器网络B']
         else:  # 测试时只需生成器
-            self.模型名称列表 = ['生成器A', '生成器B']
+            self.模型名称列表 = ['生成器网络A', '生成器网络B']
         # 定义网络
         self.生成器网络A = 多个神经网络.定义生成器(选项.输入的通道数, 选项.输出的通道数, 选项.生成器末尾过滤器数量, 选项.生成器模型类型, 选项.归一化类型, not 选项.无失活率, 选项.网络初始化类型,
                                    选项.初始化比例因子, self.图形处理单元标识码)
@@ -49,11 +49,11 @@ class 循环生成式对抗神经网络模型(基础模型):
 
         if self.是否为训练模式:
             if 选项.lambda_自身 > 0:
-                assert (选项.输入通道数 == 选项.输出通道数)
+                assert (选项.输入的通道数 == 选项.输出的通道数)
             self.生成图A的池塘 = 图像池塘(选项.池塘大小)  # 创建图像缓冲区以存储先前生成的图像
             self.生成图B的池塘 = 图像池塘(选项.池塘大小)
             # 定义损失值函数
-            self.标准生成式对抗神经网络损失值函数 = 多个神经网络.生成式对抗神经网络损失值函数(选项.生成式对抗神经网络损失值类型).to(self.图形处理单元标识码)
+            self.标准生成式对抗神经网络损失值函数 = 多个神经网络.生成式对抗神经网络损失值函数(选项.生成式对抗神经网络损失值类型).to(self.设备)
             self.标准循环网络损失值函数 = torch.nn.L1Loss()
             self.标准自身损失值函数 = torch.nn.L1Loss()
             # 初始化优化器，调度器将由函数<基础模型.setup>自动实现
@@ -71,17 +71,17 @@ class 循环生成式对抗神经网络模型(基础模型):
         :return:
         """
         A到B = self.选项.方向 == 'A到B'
-        self.原始图A = 输入['A' if A到B else 'B'].to(self.图形处理单元标识码)
-        self.原始图B = 输入['B' if A到B else 'A'].to(self.图形处理单元标识码)
+        self.原始图A = 输入['A' if A到B else 'B'].to(self.设备)
+        self.原始图B = 输入['B' if A到B else 'A'].to(self.设备)
         self.图片路径列表 = 输入['路径A' if A到B else '路径B']  # 可能需要修改字符串
 
-    def 前向传播(self):
+    def 计算前向传播(self):
         self.生成图B = self.生成器网络A(self.原始图A)
         self.还原图A = self.生成器网络B(self.生成图B)
         self.生成图A = self.生成器网络B(self.原始图B)
         self.还原图B = self.生成器网络A(self.生成图A)
 
-    def 生成器的后向传播(self):
+    def 计算生成器的后向传播(self):
         lambda_自身 = self.选项.lambda_自身
         lambda_A = self.选项.lambda_A
         lambda_B = self.选项.lambda_B
@@ -105,7 +105,7 @@ class 循环生成式对抗神经网络模型(基础模型):
         self.生成器的损失值 = self.生成器A的损失值 + self.生成器B的损失值 + self.循环网络A的损失值 + self.循环网络B的损失值 + self.自身A的损失值 + self.生成器B的损失值
         self.生成器的损失值.backward()
 
-    def 判别器基本的后向传播(self, 判别器网络, 原始图, 生成图):
+    def 计算判别器基本的后向传播(self, 判别器网络, 原始图, 生成图):
         原始图的预测图 = 判别器网络(原始图)
         原始图的判别器损失值 = self.标准生成式对抗神经网络损失值函数(原始图的预测图, True)
 
@@ -117,23 +117,23 @@ class 循环生成式对抗神经网络模型(基础模型):
         判别器损失值.backward()
         return 判别器损失值
 
-    def 判别器A的后向传播(self):
+    def 计算判别器A的后向传播(self):
         生成图B = self.生成图B的池塘.查询(self.生成图B)
-        self.判别器A的损失值 = self.判别器基本的后向传播(self.判别器网络A, self.原始图B, 生成图B)
+        self.判别器A的损失值 = self.计算判别器基本的后向传播(self.判别器网络A, self.原始图B, 生成图B)
 
-    def 判别器B的后向传播(self):
+    def 计算判别器B的后向传播(self):
         生成图A = self.生成图A的池塘.查询(self.生成图A)
-        self.判别器B的损失值 = self.判别器基本的后向传播(self.判别器网络B, self.原始图A, 生成图A)
+        self.判别器B的损失值 = self.计算判别器基本的后向传播(self.判别器网络B, self.原始图A, 生成图A)
 
-    def 优化器参数(self):
-        self.前向传播()
+    def 计算优化器参数(self):
+        self.计算前向传播()
         self.设置需要的梯度([self.判别器网络A, self.判别器网络B], False)
         self.生成器的优化器.zero_grad()
-        self.生成器的后向传播()
+        self.计算生成器的后向传播()
         self.生成器的优化器.step()
 
         self.设置需要的梯度([self.判别器网络A, self.判别器网络B], False)
         self.判别器的优化器.zero_grad()
-        self.判别器A的后向传播()
-        self.判别器B的后向传播()
+        self.计算判别器A的后向传播()
+        self.计算判别器B的后向传播()
         self.判别器的优化器.step()

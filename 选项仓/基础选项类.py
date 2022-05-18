@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.cuda
 
-nn.Conv2d()
 import 模型仓
 from 工具仓 import 工具函数
 
@@ -17,8 +16,8 @@ class 基础选项:
         # 基础选项
         解析器.add_argument('--数据根目录', required=True, help='图片库路径（应该包含子文件夹 trainA, trainB, valA, valB, 等等）')
         解析器.add_argument('--名称', type=str, default='实验项目', help='目录名，它决定在哪里存储类型的结果样本和给网络模型')  # 有待进一步确认意义
-        解析器.add_argument('--使用权重和偏置项数据库', action='store_true', help='使用权重和偏置项数据库')
-        解析器.add_argument('--图形处理单元标识码', type=str, default='0', help='图形处理单元标识码：例如 0，0,1,2，0,2。如果是-1则使用中央处理单元')
+        解析器.add_argument('--是否使用权重和偏置项数据库', action='store_true', help='使用权重和偏置项数据库，即wandb')
+        解析器.add_argument('--图形处理单元标识码', type=str, default='0', help='图形处理单元标识码：例如 0 0,1,2 0,2。如果是-1则使用中央处理单元')
         解析器.add_argument('--检查点目录', type=str, default='./检查点仓', help='网络模型保存在这里')
         # 模型选项
         解析器.add_argument('--模型', type=str, default='循环生成式对抗神经网络',
@@ -49,7 +48,7 @@ class 基础选项:
         解析器.add_argument('--图像预处理', type=str, default='重置和裁剪',
                          help='在加载时缩放和裁剪图像方法[重置和裁剪 | crop | 宽度与比例 | scale_width_and_crop | none]')
         解析器.add_argument('--不翻转', action='store_true', help='如果指定，那么不要为图像数据增强做翻转')
-        解析器.add_argument('--显示时窗口的大小', type=int, default=256, help='可视化控制类和网页的显示窗口大小')
+        解析器.add_argument('--窗口尺寸', type=int, default=256, help='可视化控制类和网页的显示窗口尺寸')
         # 额外选项
         解析器.add_argument('--轮回的位子', type=str, default='最新', help='加载到哪个轮回？设置为最新以使用最新的缓存模型')
         解析器.add_argument('--迭代的位子', type=int, default=0,
