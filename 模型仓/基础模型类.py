@@ -51,38 +51,22 @@ class 基础模型(ABC):
             self.载入神经网络(加入后缀)
         self.打印神经网络(选项.冗余信息)
 
+    def 评估(self):
+        for 名称 in self.模型名称列表:
+            if isinstance(名称, str):
+                网络 = getattr(self, 名称)
+                网络.eval()
+
+    def 测试(self):
+        with torch.no_grad():
+            self.计算前向传播()
+            self.计算视觉效果()
+
     def 计算视觉效果(self):
         pass
 
-    def 载入神经网络(self, 轮回的位子):
-        # 从磁盘加载所有网络
-        for 名称 in self.模型名称列表:
-            if isinstance(名称, str):
-                生成的文件名 = '%s_%s' % (名称, 轮回的位子)
-                生成的路径 = os.path.join(self.保存目录, 生成的文件名)
-                网络 = getattr(self, 名称)
-                if isinstance(网络, torch.nn.DataParallel):
-                    网络 = 网络.module
-                print('从%s载入模型' % 生成的路径)
-                状态字典 = torch.load(生成的路径, map_location=self.设备)
-                if hasattr(状态字典, '_metadata'):
-                    del 状态字典._metadata
-                for 键值 in list(状态字典.keys()):
-                    self.__修补规范的实例以兼容状态字典(状态字典, 网络, 键值.split('.'))
-                网络.load_state_dict(状态字典)
-
-    def 打印神经网络(self, 冗余信息):
-        print('---------- 已初始化神经网络 -------------')
-        for 模型名 in self.模型名称列表:
-            if isinstance(模型名, str):
-                网络 = getattr(self, 模型名)
-                参数数量 = 0
-                for 参数 in 网络.parameters():
-                    参数数量 += 参数.numel()
-                if 冗余信息:
-                    print(网络)
-                print('[%s] 参数全部数量 : %.3f M' % (模型名, 参数数量 / 1e6))  # 有待运行后进一步查看
-        print('-----------------------------------------------')
+    def 取得图片路径(self):
+        return self.图片路径列表
 
     def 更新学习率(self):
         老学习率 = self.优化器列表[0].param_groups[0]['lr']
@@ -124,13 +108,43 @@ class 基础模型(ABC):
     def __修补规范的实例以兼容状态字典(self, 状态字典, 模型, 键值列表, 索引=0):
         键值 = 键值列表[索引]
         if 索引 + 1 == len(键值列表):
-            if 模型.__class__.__name__.startswitch('InstanceNorm') and (键值 == 'running_mean' or 键值 == 'running_var'):
+            if 模型.__class__.__name__.startswith('InstanceNorm') and (键值 == 'running_mean' or 键值 == 'running_var'):
                 if getattr(模型, 键值) is None:
                     状态字典.pop('.'.join(键值列表))
-            if 模型.__class__.__name__.startswitch('InstanceNorm') and (键值 == 'num_batches_tracked'):
+            if 模型.__class__.__name__.startswith('InstanceNorm') and (键值 == 'num_batches_tracked'):
                 状态字典.pop('.'.join(键值列表))
         else:
             self.__修补规范的实例以兼容状态字典(状态字典, getattr(模型, 键值), 键值列表, 索引 + 1)
+
+    def 载入神经网络(self, 轮回的位子):
+        # 从磁盘加载所有网络
+        for 名称 in self.模型名称列表:
+            if isinstance(名称, str):
+                生成的文件名 = '%s_%s.pth' % (名称, 轮回的位子)
+                生成的路径 = os.path.join(self.保存目录, 生成的文件名)
+                网络 = getattr(self, 名称)
+                if isinstance(网络, torch.nn.DataParallel):
+                    网络 = 网络.module
+                print('从%s载入模型' % 生成的路径)
+                状态字典 = torch.load(生成的路径, map_location=self.设备)
+                if hasattr(状态字典, '_metadata'):
+                    del 状态字典._metadata
+                for 键值 in list(状态字典.keys()):
+                    self.__修补规范的实例以兼容状态字典(状态字典, 网络, 键值.split('.'))
+                网络.load_state_dict(状态字典)
+
+    def 打印神经网络(self, 冗余信息):
+        print('---------- 已初始化神经网络 -------------')
+        for 模型名 in self.模型名称列表:
+            if isinstance(模型名, str):
+                网络 = getattr(self, 模型名)
+                参数数量 = 0
+                for 参数 in 网络.parameters():
+                    参数数量 += 参数.numel()
+                if 冗余信息:
+                    print(网络)
+                print('[%s] 参数全部数量 : %.3f M' % (模型名, 参数数量 / 1e6))  # 有待运行后进一步查看
+        print('-----------------------------------------------')
 
     def 设置需要的梯度(self, 网络列表, 是否需要梯度=False):
         if not isinstance(网络列表, list):

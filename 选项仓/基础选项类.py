@@ -50,7 +50,7 @@ class 基础选项:
         解析器.add_argument('--不翻转', action='store_true', help='如果指定，那么不要为图像数据增强做翻转')
         解析器.add_argument('--窗口尺寸', type=int, default=256, help='可视化控制类和网页的显示窗口尺寸')
         # 额外选项
-        解析器.add_argument('--轮回的位子', type=str, default='最新', help='加载到哪个轮回？设置为最新以使用最新的缓存模型')
+        解析器.add_argument('--轮回的位子', type=str, default='最新的', help='加载到哪个轮回？设置为最新以使用最新的缓存模型')
         解析器.add_argument('--迭代的位子', type=int, default=0,
                          help='加载哪次迭代的权重网络模型？如果 载入迭代 > 0，代码将通过 迭代_[迭代的位子] 加载模型；否则，代码将按 [轮回]加载模型')
         解析器.add_argument('--冗余信息', action='store_true', help='如果指定，打印更多调试信息')

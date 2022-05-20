@@ -20,14 +20,14 @@ def 把张量转成图片(输入的图片, 图片类型=np.uint8):
     return 图片矩阵.astype(图片类型)
 
 
-def 保存图片(图片矩阵, 图片路径, 比率=1.0):
+def 保存图片(图片矩阵, 图片路径, 伸缩比例=1.0):
     图片 = Image.fromarray(图片矩阵)
     h, w, _ = 图片矩阵.shape
 
-    if 比率 > 1.0:
-        图片 = 图片.resize((h, int(w * 比率)), Image.BICUBIC)
-    if 比率 < 1.0:
-        图片 = 图片.resize((int(h / 比率), w), Image.BICUBIC)
+    if 伸缩比例 > 1.0:
+        图片 = 图片.resize((h, int(w * 伸缩比例)), Image.BICUBIC)
+    if 伸缩比例 < 1.0:
+        图片 = 图片.resize((int(h / 伸缩比例), w), Image.BICUBIC)
     图片.save(图片路径)
 
 

@@ -4,8 +4,10 @@ import time
 from subprocess import Popen, PIPE
 
 import numpy as np
+import ntpath
 
 from . import 超文本标记语言类, 工具函数
+from .超文本标记语言类 import 超文本标记语言
 
 try:
     import wandb
@@ -18,6 +20,39 @@ if sys.version_info[0] == 2:
     可视化工具异常基础 = Exception
 else:
     可视化工具异常基础 = ConnectionError
+
+
+def 保存复数图片(网页: 超文本标记语言, 可视化字典, 图片路径, 伸缩比例=1.0, 宽度=256, 是否使用数据库=False):
+    """
+
+    :param 网页:
+    :param 可视化字典: 存储（名称、图像（张量或 numpy））对的有序字典
+    :param 图片路径:
+    :param 伸缩比例:
+    :param 宽度:
+    :param 是否使用数据库:
+    :return:
+    """
+    图片目录 = 网页.获得图片目录()
+    短路径 = ntpath.basename(图片路径[0])
+    名称 = os.path.splitext(短路径)[0]
+
+    网页.添加页眉(名称)
+    图片列表, 文本列表, 链接列表 = [], [], []
+    图片字典 = {}
+    for 标签, 图片数据 in 可视化字典.items():
+        图片 = 工具函数.把张量转成图片(图片数据)
+        图片名称 = '%s_%s.png' % (名称, 标签)
+        保存的路径 = os.path.join(图片目录, 图片名称)
+        工具函数.保存图片(图片, 保存的路径, 伸缩比例=伸缩比例)
+        图片列表.append(图片名称)
+        文本列表.append(标签)
+        链接列表.append(图片名称)
+        if 是否使用数据库:
+            图片字典[标签] = wandb.Image(图片)
+    网页.添加复数图片(图片列表, 文本列表, 链接列表, 宽度=宽度)
+    if 是否使用数据库:
+        wandb.log(图片字典)
 
 
 class 可视化工具:
