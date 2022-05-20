@@ -5,8 +5,7 @@ from 模型仓 import 创建模型
 from 选项仓.训练用选项类 import 训练用选项
 from 数据处理仓 import 创建数据集
 
-# 需要在控制台执行命令 visdom
-# 可能需要在控制台执行命令 wandb login
+
 if __name__ == '__main__':
     训练用选项 = 训练用选项().解析()
     数据集 = 创建数据集(训练用选项)
